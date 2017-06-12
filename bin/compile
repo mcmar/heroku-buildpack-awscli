@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir>
+
+# fail fast
+set -e
+
+# debug
+# set -x
+
+indent() {
+  sed -u 's/^/       /'
+}
+
+# clean up leaking environment
+unset GIT_DIR
+
+# config
+AWS_CLI_URL="https://s3.amazonaws.com/aws-cli/awscli-bundle.zip"
+
+# parse and derive params
+BUILD_DIR=$1
+CACHE_DIR=$2
+
+LP_DIR=`cd $(dirname $0); cd ..; pwd`
+BUILDPACK_DIR="$(dirname $(dirname $0))"
+
+echo "-----> Fetching awscli"
+curl --silent --retry 3 -o /tmp/awscli-bundle.zip $AWS_CLI_URL
+unzip -qq -d "/tmp/" /tmp/awscli-bundle.zip
+
+echo "-----> Installing awscli"
+
+INSTALL_DIR="$BUILD_DIR/vendor/awscli"
+/tmp/awscli-bundle/install -i $INSTALL_DIR | indent
+
+# fix shebang line when running in dyno
+sed -i"" "s:$BUILD_DIR:/app:" $INSTALL_DIR/bin/aws
+
+# Cleaning up
+rm -rf /tmp/awscli*
+
+echo "-----> awscli installation done"
